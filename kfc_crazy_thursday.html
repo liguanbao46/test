@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>今天是什么日子...</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: "Microsoft YaHei", sans-serif;
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            color: #ecf0f1;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        .story-section {
+            padding: 20px;
+            text-align: center;
+            opacity: 0;
+            transform: translateY(50px);
+            transition: all 0.8s ease;
+        }
+
+        .story-section.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .story-section.hide {
+            opacity: 0;
+            transform: translateY(-50px);
+        }
+
+        .title {
+            font-size: 24px;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .content {
+            font-size: 16px;
+            line-height: 1.8;
+            margin-bottom: 30px;
+            text-align: left;
+            padding: 0 10px;
+        }
+
+        .continue-btn {
+            background: linear-gradient(45deg, #e74c3c, #c0392b);
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);
+        }
+
+        .continue-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(231, 76, 60, 0.4);
+        }
+
+        .reveal-section {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            padding: 30px 20px;
+            text-align: center;
+            display: none;
+        }
+
+        .reveal-section.show {
+            display: block;
+            animation: slideUp 1s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(100vh);
+            }
+            to {
+                transform: translateY(0);
+            }
+        }
+
+        .kfc-logo {
+            font-size: 36px;
+            font-weight: bold;
+            color: white;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .crazy-text {
+            font-size: 28px;
+            font-weight: bold;
+            color: #ffd700;
+            margin: 20px 0;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .offer-text {
+            font-size: 18px;
+            margin: 15px 0;
+            background: rgba(255,255,255,0.1);
+            padding: 10px;
+            border-radius: 10px;
+        }
+
+        .cta-button {
+            background: linear-gradient(45deg, #ffd700, #ffa500);
+            color: #2c3e50;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 30px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);
+        }
+
+        .cta-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(255, 215, 0, 0.4);
+        }
+
+        .floating-icon {
+            position: absolute;
+            font-size: 20px;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .typing-effect {
+            overflow: hidden;
+            border-right: 2px solid #ecf0f1;
+            white-space: nowrap;
+            margin: 0 auto;
+            animation: typing 3s steps(40, end), blink-caret 0.75s step-end infinite;
+        }
+
+        @keyframes typing {
+            from { width: 0 }
+            to { width: 100% }
+        }
+
+        @keyframes blink-caret {
+            from, to { border-color: transparent }
+            50% { border-color: #ecf0f1 }
+        }
+
+        .mystery-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at center, rgba(52, 73, 94, 0.8) 0%, rgba(44, 62, 80, 0.9) 100%);
+            z-index: -1;
+        }
+
+        .story-1 { background: linear-gradient(135deg, #2c3e50, #34495e); }
+        .story-2 { background: linear-gradient(135deg, #8e44ad, #9b59b6); }
+        .story-3 { background: linear-gradient(135deg, #27ae60, #2ecc71); }
+        .story-4 { background: linear-gradient(135deg, #f39c12, #e67e22); }
+        .story-5 { background: linear-gradient(135deg, #e74c3c, #c0392b); }
+    </style>
+</head>
+<body>
+    <div class="mystery-bg"></div>
+    <div class="container">
+        <!-- 第一段 -->
+        <div class="story-section story-1" id="section1">
+            <h1 class="title">深夜的秘密</h1>
+            <div class="content">
+                <p style="margin-bottom: 20px;">已经是凌晨3点了...</p>
+                <p style="margin-bottom: 20px;">我坐在电脑前，手指在键盘上颤抖着。</p>
+                <p style="margin-bottom: 20px;">这个秘密，我已经守了太久了。</p>
+                <p>今天，我必须要说出来...</p>
+            </div>
+            <button class="continue-btn" onclick="nextSection(2)">继续...</button>
+        </div>
+
+        <!-- 第二段 -->
+        <div class="story-section story-2" id="section2">
+            <h1 class="title">十年前的那个晚上</h1>
+            <div class="content">
+                <p style="margin-bottom: 20px;">那是一个雷雨交加的夜晚...</p>
+                <p style="margin-bottom: 20px;">我看到了不该看到的东西。</p>
+                <p style="margin-bottom: 20px;">一个神秘的组织，他们每周都会聚集在那里。</p>
+                <p style="margin-bottom: 20px;">他们在策划着什么...</p>
+                <p>而今天，就是他们行动的日子。</p>
+            </div>
+            <button class="continue-btn" onclick="nextSection(3)">真相即将揭晓...</button>
+        </div>
+
+        <!-- 第三段 -->
+        <div class="story-section story-3" id="section3">
+            <h1 class="title">组织的真面目</h1>
+            <div class="content">
+                <p style="margin-bottom: 20px;">经过多年的调查，我终于发现了...</p>
+                <p style="margin-bottom: 20px;">这个组织有着庞大的势力网络。</p>
+                <p style="margin-bottom: 20px;">他们控制着城市的每一个角落...</p>
+                <p style="margin-bottom: 20px;">红色和白色，是他们的标志颜色。</p>
+                <p>而今天，他们要发起最大的一次行动！</p>
+            </div>
+            <button class="continue-btn" onclick="nextSection(4)">我必须阻止他们...</button>
+        </div>
+
+        <!-- 第四段 -->
+        <div class="story-section story-4" id="section4">
+            <h1 class="title">行动开始了</h1>
+            <div class="content">
+                <p style="margin-bottom: 20px;">现在是星期四，他们选择的日子。</p>
+                <p style="margin-bottom: 20px;">我看到无数人涌向他们的据点...</p>
+                <p style="margin-bottom: 20px;">每个人脸上都带着诡异的笑容。</p>
+                <p style="margin-bottom: 20px;">他们手里拿着什么东西...</p>
+                <p>不，我必须要进去看看真相！</p>
+            </div>
+            <button class="continue-btn" onclick="nextSection(5)">冲进去！</button>
+        </div>
+
+        <!-- 第五段 -->
+        <div class="story-section story-5" id="section5">
+            <h1 class="title">震惊的发现</h1>
+            <div class="content">
+                <p style="margin-bottom: 20px;">我冲进了他们的据点...</p>
+                <p style="margin-bottom: 20px;">眼前的景象让我目瞪口呆。</p>
+                <p style="margin-bottom: 20px;">人们排着队，眼神中充满了渴望...</p>
+                <p style="margin-bottom: 20px;">他们手里拿着手机，嘴里念着数字...</p>
+                <p style="margin-bottom: 20px;">9.9...19.9...29.9...</p>
+                <p>突然，我明白了一切...</p>
+            </div>
+            <button class="continue-btn" onclick="reveal()">真相大白！</button>
+        </div>
+
+        <!-- 揭晓部分 -->
+        <div class="reveal-section" id="reveal">
+            <div class="floating-icon" style="top: 10%; left: 10%;">🍗</div>
+            <div class="floating-icon" style="top: 20%; right: 15%; animation-delay: 1s;">🍟</div>
+            <div class="floating-icon" style="bottom: 30%; left: 20%; animation-delay: 2s;">🥤</div>
+            <div class="floating-icon" style="bottom: 20%; right: 10%; animation-delay: 1.5s;">🍔</div>
+            
+            <div class="kfc-logo">KFC</div>
+            <div class="crazy-text">疯狂星期四</div>
+            
+            <div class="offer-text">原来这个"神秘组织"就是...</div>
+            <div class="offer-text">每周四都让人疯狂的肯德基！</div>
+            
+            <div style="margin: 30px 0;">
+                <div class="offer-text">🍗 吮指原味鸡 2块装 ¥9.9</div>
+                <div class="offer-text">🍟 小份薯条+小杯可乐 ¥9.9</div>
+                <div class="offer-text">🥪 劲爆鸡米花 ¥19.9</div>
+                <div class="offer-text">🧀 葡式蛋挞 8个装 ¥29.9</div>
+            </div>
+            
+            <div style="font-size: 20px; margin: 20px 0; color: #ffd700;">
+                今天就是疯狂星期四！
+            </div>
+            
+            <div style="font-size: 16px; margin: 15px 0;">
+                所以...谁请我吃肯德基？ 😏
+            </div>
+            
+            <button class="cta-button" onclick="goToKFC()">
+                立即下单 🛒
+            </button>
+            
+            <div style="margin-top: 30px; font-size: 14px; opacity: 0.8;">
+                * 活动仅限今天，快来加入这场"疯狂"吧！
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentSection = 1;
+        
+        // 页面加载时显示第一个section
+        window.onload = function() {
+            document.getElementById('section1').classList.add('show');
+        }
+        
+        function nextSection(sectionNum) {
+            // 隐藏当前section
+            const currentSec = document.getElementById('section' + currentSection);
+            currentSec.classList.remove('show');
+            currentSec.classList.add('hide');
+            
+            // 显示下一个section
+            setTimeout(() => {
+                currentSec.style.display = 'none';
+                const nextSec = document.getElementById('section' + sectionNum);
+                nextSec.style.display = 'block';
+                
+                setTimeout(() => {
+                    nextSec.classList.add('show');
+                    currentSection = sectionNum;
+                }, 100);
+            }, 800);
+        }
+        
+        function reveal() {
+            // 隐藏最后一个story section
+            const lastSection = document.getElementById('section5');
+            lastSection.classList.remove('show');
+            lastSection.classList.add('hide');
+            
+            // 显示揭晓部分
+            setTimeout(() => {
+                lastSection.style.display = 'none';
+                const revealSection = document.getElementById('reveal');
+                revealSection.classList.add('show');
+                
+                // 添加庆祝效果
+                createConfetti();
+            }, 800);
+        }
+        
+        function goToKFC() {
+            alert('正在跳转到肯德基官方小程序... 😄\n\n(这里可以接入真实的KFC下单链接)');
+        }
+        
+        // 创建五彩纸屑效果
+        function createConfetti() {
+            const colors = ['#e74c3c', '#ffd700', '#ffffff', '#f39c12'];
+            
+            for(let i = 0; i < 50; i++) {
+                setTimeout(() => {
+                    const confetti = document.createElement('div');
+                    confetti.style.position = 'fixed';
+                    confetti.style.left = Math.random() * 100 + 'vw';
+                    confetti.style.top = '-10px';
+                    confetti.style.width = '10px';
+                    confetti.style.height = '10px';
+                    confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                    confetti.style.borderRadius = '50%';
+                    confetti.style.pointerEvents = 'none';
+                    confetti.style.zIndex = '1000';
+                    confetti.style.animation = 'fall 3s linear forwards';
+                    
+                    document.body.appendChild(confetti);
+                    
+                    setTimeout(() => {
+                        confetti.remove();
+                    }, 3000);
+                }, i * 100);
+            }
+        }
+        
+        // 添加掉落动画
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes fall {
+                to {
+                    transform: translateY(100vh) rotate(360deg);
+                }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>
