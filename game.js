@@ -85,15 +85,31 @@ class TimeEchoMaze {
             // 创建3D音频环境
             this.spatialAudio = {
                 listener: this.audioContext.listener,
-                panners: []
+                panners: [],
+                backgroundMusic: null,
+                masterGain: null
             };
+            
+            // 创建主音量控制
+            this.spatialAudio.masterGain = this.audioContext.createGain();
+            this.spatialAudio.masterGain.connect(this.audioContext.destination);
+            this.spatialAudio.masterGain.gain.value = 0.3;
             
             // 设置监听器位置
             if (this.spatialAudio.listener.positionX) {
                 this.spatialAudio.listener.positionX.value = 0;
                 this.spatialAudio.listener.positionY.value = 0;
                 this.spatialAudio.listener.positionZ.value = 0;
+                this.spatialAudio.listener.forwardX.value = 0;
+                this.spatialAudio.listener.forwardY.value = 0;
+                this.spatialAudio.listener.forwardZ.value = -1;
+                this.spatialAudio.listener.upX.value = 0;
+                this.spatialAudio.listener.upY.value = 1;
+                this.spatialAudio.listener.upZ.value = 0;
             }
+            
+            // 创建背景音乐
+            this.createBackgroundMusic();
             
         } catch (error) {
             console.warn('Audio setup failed:', error);
@@ -163,6 +179,11 @@ class TimeEchoMaze {
         // 暂停按钮
         document.getElementById('pauseBtn').addEventListener('click', () => {
             this.togglePause();
+        });
+        
+        // 音频切换按钮
+        document.getElementById('audioToggleBtn').addEventListener('click', () => {
+            this.toggleAudio();
         });
     }
     
@@ -476,6 +497,17 @@ class TimeEchoMaze {
                     Math.pow(playerWorldZ - pathWorldZ, 2)
                 );
                 
+                // 播放距离相关的3D音效提示
+                if (distance < 5 && distance > 3) {
+                    if (!path.soundPlaying) {
+                        path.soundPlaying = true;
+                        this.playHiddenPathSound(path);
+                        setTimeout(() => {
+                            path.soundPlaying = false;
+                        }, 2000);
+                    }
+                }
+                
                 // 如果玩家足够接近，发现隐藏路径
                 if (distance < 3) {
                     path.discovered = true;
@@ -520,10 +552,100 @@ class TimeEchoMaze {
         }
     }
     
+    toggleAudio() {
+        if (this.spatialAudio && this.spatialAudio.masterGain) {
+            const currentVolume = this.spatialAudio.masterGain.gain.value;
+            const newVolume = currentVolume > 0 ? 0 : 0.3;
+            
+            this.spatialAudio.masterGain.gain.setValueAtTime(
+                newVolume, 
+                this.audioContext.currentTime
+            );
+            
+            document.getElementById('audioToggleBtn').textContent = newVolume > 0 ? '🔊' : '🔇';
+        }
+    }
+    
     updateHUD() {
         document.getElementById('score').textContent = this.score;
         document.getElementById('level').textContent = this.level;
         document.getElementById('energy').textContent = this.energy;
+    }
+    
+    // 创建背景音乐
+    createBackgroundMusic() {
+        if (!this.audioContext) return;
+        
+        // 创建环境音乐循环
+        this.createAmbientMusic();
+        
+        // 创建节拍音效
+        this.createBeatSound();
+    }
+    
+    createAmbientMusic() {
+        // 创建多层次的环境音乐
+        const baseFreq = 110; // A2
+        const harmonics = [1, 2, 3, 5, 8]; // 泛音系列
+        
+        harmonics.forEach((harmonic, index) => {
+            const oscillator = this.audioContext.createOscillator();
+            const gainNode = this.audioContext.createGain();
+            const filterNode = this.audioContext.createBiquadFilter();
+            
+            oscillator.frequency.value = baseFreq * harmonic;
+            oscillator.type = 'sine';
+            
+            filterNode.type = 'lowpass';
+            filterNode.frequency.value = 800 + index * 200;
+            
+            gainNode.gain.value = 0.02 / (harmonic * 0.5); // 递减音量
+            
+            oscillator.connect(filterNode);
+            filterNode.connect(gainNode);
+            gainNode.connect(this.spatialAudio.masterGain);
+            
+            oscillator.start();
+            
+            // 添加缓慢的频率调制
+            const lfo = this.audioContext.createOscillator();
+            const lfoGain = this.audioContext.createGain();
+            
+            lfo.frequency.value = 0.1 + index * 0.05;
+            lfo.type = 'sine';
+            lfoGain.gain.value = 2;
+            
+            lfo.connect(lfoGain);
+            lfoGain.connect(oscillator.frequency);
+            lfo.start();
+        });
+    }
+    
+    createBeatSound() {
+        // 节拍音效将在update循环中处理
+        this.lastBeatSoundTime = Date.now();
+    }
+    
+    playBeatTick() {
+        const oscillator = this.audioContext.createOscillator();
+        const gainNode = this.audioContext.createGain();
+        const filterNode = this.audioContext.createBiquadFilter();
+        
+        oscillator.frequency.value = 800;
+        oscillator.type = 'square';
+        
+        filterNode.type = 'highpass';
+        filterNode.frequency.value = 400;
+        
+        gainNode.gain.setValueAtTime(0.05, this.audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 0.1);
+        
+        oscillator.connect(filterNode);
+        filterNode.connect(gainNode);
+        gainNode.connect(this.spatialAudio.masterGain);
+        
+        oscillator.start();
+        oscillator.stop(this.audioContext.currentTime + 0.1);
     }
     
     // 音频播放函数
@@ -534,16 +656,16 @@ class TimeEchoMaze {
             const gainNode = this.audioContext.createGain();
             
             oscillator.connect(gainNode);
-            gainNode.connect(this.audioContext.destination);
+            gainNode.connect(this.spatialAudio.masterGain);
             
-            oscillator.frequency.value = 440;
+            oscillator.frequency.value = 440 + Math.random() * 100;
             oscillator.type = 'sine';
             
-            gainNode.gain.setValueAtTime(0.1, this.audioContext.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 0.1);
+            gainNode.gain.setValueAtTime(0.08, this.audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 0.15);
             
             oscillator.start();
-            oscillator.stop(this.audioContext.currentTime + 0.1);
+            oscillator.stop(this.audioContext.currentTime + 0.15);
         }
     }
     
@@ -551,38 +673,100 @@ class TimeEchoMaze {
         if (this.audioContext) {
             const oscillator = this.audioContext.createOscillator();
             const gainNode = this.audioContext.createGain();
-            
-            oscillator.connect(gainNode);
-            gainNode.connect(this.audioContext.destination);
+            const filterNode = this.audioContext.createBiquadFilter();
             
             oscillator.frequency.value = 150;
             oscillator.type = 'sawtooth';
             
-            gainNode.gain.setValueAtTime(0.2, this.audioContext.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 0.3);
+            filterNode.type = 'lowpass';
+            filterNode.frequency.value = 300;
+            
+            gainNode.gain.setValueAtTime(0.15, this.audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 0.4);
+            
+            oscillator.connect(filterNode);
+            filterNode.connect(gainNode);
+            gainNode.connect(this.spatialAudio.masterGain);
             
             oscillator.start();
-            oscillator.stop(this.audioContext.currentTime + 0.3);
+            oscillator.stop(this.audioContext.currentTime + 0.4);
         }
     }
     
     playDiscoverySound(frequency) {
         if (this.audioContext) {
-            const oscillator = this.audioContext.createOscillator();
-            const gainNode = this.audioContext.createGain();
+            // 创建和弦效果
+            const frequencies = [frequency, frequency * 1.25, frequency * 1.5]; // 大三和弦
             
-            oscillator.connect(gainNode);
-            gainNode.connect(this.audioContext.destination);
-            
-            oscillator.frequency.value = frequency;
-            oscillator.type = 'triangle';
-            
-            gainNode.gain.setValueAtTime(0.15, this.audioContext.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 0.5);
-            
-            oscillator.start();
-            oscillator.stop(this.audioContext.currentTime + 0.5);
+            frequencies.forEach((freq, index) => {
+                const oscillator = this.audioContext.createOscillator();
+                const gainNode = this.audioContext.createGain();
+                const filterNode = this.audioContext.createBiquadFilter();
+                
+                oscillator.frequency.value = freq;
+                oscillator.type = 'triangle';
+                
+                filterNode.type = 'bandpass';
+                filterNode.frequency.value = freq * 2;
+                filterNode.Q.value = 5;
+                
+                gainNode.gain.setValueAtTime(0.08 / (index + 1), this.audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 0.8);
+                
+                oscillator.connect(filterNode);
+                filterNode.connect(gainNode);
+                gainNode.connect(this.spatialAudio.masterGain);
+                
+                oscillator.start(this.audioContext.currentTime + index * 0.1);
+                oscillator.stop(this.audioContext.currentTime + 0.8);
+            });
         }
+    }
+    
+    playHiddenPathSound(path) {
+        if (!this.audioContext) return;
+        
+        // 创建3D定位音效
+        const panner = this.audioContext.createPanner();
+        const oscillator = this.audioContext.createOscillator();
+        const gainNode = this.audioContext.createGain();
+        const filterNode = this.audioContext.createBiquadFilter();
+        
+        // 设置3D音频属性
+        panner.panningModel = 'HRTF';
+        panner.distanceModel = 'inverse';
+        panner.refDistance = 1;
+        panner.maxDistance = 10;
+        panner.rolloffFactor = 2;
+        
+        // 计算3D位置
+        const worldX = (path.x - this.mazeSize / 2) * 2;
+        const worldZ = (path.y - this.mazeSize / 2) * 2;
+        
+        if (panner.positionX) {
+            panner.positionX.value = worldX;
+            panner.positionY.value = 0;
+            panner.positionZ.value = worldZ;
+        }
+        
+        // 设置音频属性
+        oscillator.frequency.value = path.audioFreq;
+        oscillator.type = 'sine';
+        
+        filterNode.type = 'lowpass';
+        filterNode.frequency.value = path.audioFreq * 2;
+        
+        gainNode.gain.setValueAtTime(0.1, this.audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 2);
+        
+        // 连接音频链
+        oscillator.connect(filterNode);
+        filterNode.connect(gainNode);
+        gainNode.connect(panner);
+        panner.connect(this.spatialAudio.masterGain);
+        
+        oscillator.start();
+        oscillator.stop(this.audioContext.currentTime + 2);
     }
     
     // 渲染系统
@@ -796,6 +980,10 @@ class TimeEchoMaze {
     updateBeat(currentTime) {
         if (currentTime - this.lastBeatTime >= this.beatInterval) {
             this.lastBeatTime = currentTime;
+            // 播放节拍音效
+            if (this.audioContext && this.gameState === 'playing') {
+                this.playBeatTick();
+            }
         }
     }
     
