@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>时空回响迷宫 - Time Echo Maze</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="gameContainer">
+        <!-- 游戏标题界面 -->
+        <div id="titleScreen" class="screen active">
+            <div class="title-content">
+                <h1 class="game-title">时空回响迷宫</h1>
+                <h2 class="game-subtitle">Time Echo Maze</h2>
+                <p class="game-description">在时间的回响中找到出路</p>
+                <button id="startBtn" class="btn primary">开始游戏</button>
+                <button id="helpBtn" class="btn secondary">游戏说明</button>
+            </div>
+            <div class="background-animation">
+                <div class="time-particle"></div>
+                <div class="time-particle"></div>
+                <div class="time-particle"></div>
+            </div>
+        </div>
+
+        <!-- 游戏说明界面 -->
+        <div id="helpScreen" class="screen">
+            <div class="help-content">
+                <h2>游戏说明</h2>
+                <div class="help-item">
+                    <h3>🎵 节拍同步</h3>
+                    <p>跟随音乐节拍移动，错过节拍会被时空乱流困住</p>
+                </div>
+                <div class="help-item">
+                    <h3>👻 时间幻影</h3>
+                    <p>你的移动轨迹会留下幻影，利用它们记住正确路径</p>
+                </div>
+                <div class="help-item">
+                    <h3>🔊 空间音效</h3>
+                    <p>戴上耳机，通过3D音效找到隐藏通道</p>
+                </div>
+                <div class="help-item">
+                    <h3>🌀 迷宫变化</h3>
+                    <p>迷宫会周期性重构，记住关键路径点</p>
+                </div>
+                <button id="backBtn" class="btn secondary">返回</button>
+            </div>
+        </div>
+
+        <!-- 游戏主界面 -->
+        <div id="gameScreen" class="screen">
+            <div class="game-hud">
+                <div class="hud-left">
+                    <div class="score">得分: <span id="score">0</span></div>
+                    <div class="level">关卡: <span id="level">1</span></div>
+                </div>
+                <div class="hud-center">
+                    <div class="beat-indicator">
+                        <div class="beat-bar">
+                            <div class="beat-pulse"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="hud-right">
+                    <div class="energy">能量: <span id="energy">100</span></div>
+                    <button id="pauseBtn" class="btn small">暂停</button>
+                </div>
+            </div>
+
+            <div id="gameCanvas">
+                <canvas id="mazeCanvas" width="800" height="600"></canvas>
+                <div id="playerTrail"></div>
+            </div>
+
+            <div class="mobile-controls">
+                <div class="control-pad">
+                    <button class="control-btn" data-direction="up">↑</button>
+                    <div class="control-row">
+                        <button class="control-btn" data-direction="left">←</button>
+                        <button class="control-btn center" id="centerBtn">⊙</button>
+                        <button class="control-btn" data-direction="right">→</button>
+                    </div>
+                    <button class="control-btn" data-direction="down">↓</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 游戏结束界面 -->
+        <div id="gameOverScreen" class="screen">
+            <div class="game-over-content">
+                <h2 id="gameOverTitle">时空乱流</h2>
+                <div id="finalScore" class="final-score">最终得分: 0</div>
+                <div id="levelReached" class="level-reached">到达关卡: 1</div>
+                <button id="restartBtn" class="btn primary">重新开始</button>
+                <button id="menuBtn" class="btn secondary">返回主菜单</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 音频元素 -->
+    <audio id="bgMusic" loop>
+        <source src="audio/background.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="moveSound">
+        <source src="audio/move.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="collectSound">
+        <source src="audio/collect.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="errorSound">
+        <source src="audio/error.mp3" type="audio/mpeg">
+    </audio>
+
+    <script src="game.js"></script>
+</body>
+</html>
