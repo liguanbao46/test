@@ -16,6 +16,21 @@
 - **输入**: PNG, JPEG, GIF, BMP, TIFF, WEBP, ICO
 - **输出**: PNG, JPEG, GIF, BMP, TIFF, WEBP, ICO
 
+### Office文档格式
+- **Word文档**:
+  - **输入**: DOCX, DOC, TXT, HTML, MD
+  - **输出**: DOCX, TXT, HTML, MD, PDF
+- **Excel电子表格**:
+  - **输入**: XLSX, XLS, CSV, TSV, ODS
+  - **输出**: XLSX, XLS, CSV, TSV
+- **PowerPoint演示文稿**:
+  - **输入**: PPTX, PPT, ODP
+  - **输出**: PPTX, PDF
+
+### 通用文档格式
+- **输入**: TXT, HTML, PDF, MD, RTF
+- **输出**: TXT, HTML, PDF, MD, DOCX
+
 ### 音频格式 (需要ffmpeg)
 - **输入**: MP3, WAV, FLAC, AAC, OGG
 - **输出**: MP3, WAV, FLAC, AAC, OGG
@@ -23,10 +38,6 @@
 ### 视频格式 (需要ffmpeg)
 - **输入**: MP4, AVI, MOV, MKV, WEBM, FLV
 - **输出**: MP4, AVI, MOV, MKV, WEBM, FLV
-
-### 文档格式
-- **输入**: TXT, HTML, PDF
-- **输出**: TXT, HTML
 
 ## 安装要求
 
@@ -42,6 +53,9 @@ pip install -r requirements.txt
 - **FFmpeg** (用于音频和视频转换)
   - 下载地址: https://ffmpeg.org/download.html
   - 安装后确保 `ffmpeg` 命令在系统PATH中
+- **Pandoc** (用于高级文档格式转换)
+  - 下载地址: https://pandoc.org/installing.html
+  - 支持更多文档格式之间的转换，包括PDF生成
 
 ## 安装方法
 
@@ -113,14 +127,20 @@ pip install -r requirements.txt
 **Q: 为什么音频/视频转换失败？**
 A: 请确保已正确安装FFmpeg并添加到系统PATH中。
 
+**Q: 为什么Office文档转换失败？**
+A: 请确保已安装所有依赖包。部分高级转换功能需要安装Pandoc。
+
 **Q: 支持批量转换吗？**
 A: 当前版本暂不支持批量转换，需要逐个文件转换。
 
 **Q: 转换后的文件质量如何？**
-A: 图片转换保持高质量设置，音视频转换使用标准编码参数。
+A: 图片转换保持高质量设置，音视频转换使用标准编码参数，Office文档转换保持原有格式和内容。
 
-**Q: 可以转换哪些文档格式？**
-A: 目前主要支持纯文本和HTML文档的基础转换。
+**Q: 可以转换哪些Office格式？**
+A: 支持Word(DOCX/DOC)、Excel(XLSX/XLS/CSV)、PowerPoint(PPTX/PPT)等主流Office格式的相互转换。
+
+**Q: PDF转换需要什么条件？**
+A: PDF转换需要安装Pandoc。支持从多种格式转换为PDF，以及从PDF提取文本内容。
 
 ## 技术说明
 
@@ -129,6 +149,12 @@ A: 目前主要支持纯文本和HTML文档的基础转换。
 - **文件检测**: python-magic (libmagic封装)
 - **图片处理**: Pillow (PIL)
 - **音视频处理**: FFmpeg (外部工具)
+- **Office文档处理**: 
+  - python-docx (Word文档)
+  - openpyxl (Excel电子表格)
+  - python-pptx (PowerPoint演示文稿)
+  - pandas (数据处理)
+- **文档转换**: pypandoc (Pandoc Python接口)
 
 ### 文件检测原理
 程序使用 `python-magic` 库来检测文件的MIME类型，这比仅依赖文件扩展名更准确可靠。检测流程：

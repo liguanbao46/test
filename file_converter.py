@@ -7,6 +7,12 @@ import subprocess
 from pathlib import Path
 import threading
 import json
+import pandas as pd
+from docx import Document
+from openpyxl import Workbook, load_workbook
+from pptx import Presentation
+import pypandoc
+from io import BytesIO
 
 class FileConverter:
     def __init__(self, root):
@@ -22,7 +28,9 @@ class FileConverter:
         # 支持的转换格式映射
         self.format_mappings = {
             'image': ['PNG', 'JPEG', 'GIF', 'BMP', 'TIFF', 'WEBP', 'ICO'],
-            'document': ['PDF', 'DOCX', 'TXT', 'RTF', 'HTML'],
+            'document': ['PDF', 'DOCX', 'DOC', 'TXT', 'RTF', 'HTML', 'MD'],
+            'spreadsheet': ['XLSX', 'XLS', 'CSV', 'ODS', 'TSV'],
+            'presentation': ['PPTX', 'PPT', 'ODP', 'PDF'],
             'audio': ['MP3', 'WAV', 'FLAC', 'AAC', 'OGG'],
             'video': ['MP4', 'AVI', 'MOV', 'MKV', 'WEBM', 'FLV'],
             'archive': ['ZIP', 'RAR', '7Z', 'TAR.GZ']
@@ -108,7 +116,9 @@ class FileConverter:
             filetypes=[
                 ("所有文件", "*.*"),
                 ("图片文件", "*.png *.jpg *.jpeg *.gif *.bmp *.tiff *.webp"),
-                ("文档文件", "*.pdf *.docx *.txt *.rtf *.html"),
+                ("文档文件", "*.pdf *.docx *.doc *.txt *.rtf *.html *.md"),
+                ("电子表格", "*.xlsx *.xls *.csv *.ods *.tsv"),
+                ("演示文稿", "*.pptx *.ppt *.odp"),
                 ("音频文件", "*.mp3 *.wav *.flac *.aac *.ogg"),
                 ("视频文件", "*.mp4 *.avi *.mov *.mkv *.webm *.flv"),
             ]
@@ -162,8 +172,18 @@ class FileConverter:
             '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png',
             '.gif': 'image/gif', '.bmp': 'image/bmp', '.tiff': 'image/tiff',
             '.webp': 'image/webp', '.ico': 'image/x-icon',
-            '.pdf': 'application/pdf', '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            '.pdf': 'application/pdf', 
+            '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            '.doc': 'application/msword',
+            '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            '.xls': 'application/vnd.ms-excel',
+            '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            '.ppt': 'application/vnd.ms-powerpoint',
+            '.csv': 'text/csv', '.tsv': 'text/tab-separated-values',
+            '.ods': 'application/vnd.oasis.opendocument.spreadsheet',
+            '.odp': 'application/vnd.oasis.opendocument.presentation',
             '.txt': 'text/plain', '.rtf': 'application/rtf', '.html': 'text/html',
+            '.md': 'text/markdown',
             '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.flac': 'audio/flac',
             '.aac': 'audio/aac', '.ogg': 'audio/ogg',
             '.mp4': 'video/mp4', '.avi': 'video/x-msvideo', '.mov': 'video/quicktime',
@@ -183,8 +203,16 @@ class FileConverter:
             formats = self.format_mappings['audio']
         elif mime_type.startswith('video/'):
             formats = self.format_mappings['video']
-        elif mime_type in ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain', 'application/rtf', 'text/html']:
+        elif mime_type in ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 
+                          'application/msword', 'text/plain', 'application/rtf', 'text/html', 'text/markdown']:
             formats = self.format_mappings['document']
+        elif mime_type in ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 
+                          'application/vnd.ms-excel', 'text/csv', 'text/tab-separated-values',
+                          'application/vnd.oasis.opendocument.spreadsheet']:
+            formats = self.format_mappings['spreadsheet']
+        elif mime_type in ['application/vnd.openxmlformats-officedocument.presentationml.presentation',
+                          'application/vnd.ms-powerpoint', 'application/vnd.oasis.opendocument.presentation']:
+            formats = self.format_mappings['presentation']
         elif mime_type in ['application/zip', 'application/x-rar-compressed', 'application/x-7z-compressed']:
             formats = self.format_mappings['archive']
         else:
@@ -251,8 +279,17 @@ class FileConverter:
                 self.convert_audio(source_file, output_file, target_format)
             elif self.current_format.startswith('video/'):
                 self.convert_video(source_file, output_file, target_format)
-            elif self.current_format in ['application/pdf', 'text/plain', 'text/html']:
+            elif self.current_format in ['application/pdf', 'text/plain', 'text/html', 'text/markdown',
+                                       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                                       'application/msword', 'application/rtf']:
                 self.convert_document(source_file, output_file, target_format)
+            elif self.current_format in ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                                       'application/vnd.ms-excel', 'text/csv', 'text/tab-separated-values',
+                                       'application/vnd.oasis.opendocument.spreadsheet']:
+                self.convert_spreadsheet(source_file, output_file, target_format)
+            elif self.current_format in ['application/vnd.openxmlformats-officedocument.presentationml.presentation',
+                                       'application/vnd.ms-powerpoint', 'application/vnd.oasis.opendocument.presentation']:
+                self.convert_presentation(source_file, output_file, target_format)
             else:
                 raise Exception(f"不支持的文件类型: {self.current_format}")
                 
@@ -315,17 +352,220 @@ class FileConverter:
         """转换文档格式"""
         self.root.after(0, lambda: self.progress_var.set(50))
         
-        if target_format == 'txt':
-            # 简单的文本转换
-            with open(source_file, 'r', encoding='utf-8', errors='ignore') as f:
-                content = f.read()
-            with open(output_file, 'w', encoding='utf-8') as f:
-                f.write(content)
-        elif target_format == 'pdf':
-            # 需要额外的库来转换为PDF
-            raise Exception("PDF转换功能需要额外配置，请使用专门的PDF转换工具")
-        else:
-            raise Exception(f"不支持的文档格式: {target_format}")
+        try:
+            if target_format.lower() == 'txt':
+                # 处理各种格式到TXT的转换
+                if self.current_format == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+                    # DOCX to TXT
+                    doc = Document(source_file)
+                    content = '\n'.join([paragraph.text for paragraph in doc.paragraphs])
+                    with open(output_file, 'w', encoding='utf-8') as f:
+                        f.write(content)
+                elif self.current_format == 'application/msword':
+                    # DOC to TXT (使用pypandoc)
+                    content = pypandoc.convert_file(source_file, 'plain')
+                    with open(output_file, 'w', encoding='utf-8') as f:
+                        f.write(content)
+                else:
+                    # 其他格式的简单文本转换
+                    with open(source_file, 'r', encoding='utf-8', errors='ignore') as f:
+                        content = f.read()
+                    with open(output_file, 'w', encoding='utf-8') as f:
+                        f.write(content)
+                        
+            elif target_format.lower() == 'docx':
+                # 转换为DOCX格式
+                if self.current_format == 'text/plain':
+                    # TXT to DOCX
+                    doc = Document()
+                    with open(source_file, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                    doc.add_paragraph(content)
+                    doc.save(output_file)
+                elif self.current_format == 'application/msword':
+                    # DOC to DOCX (使用pypandoc)
+                    pypandoc.convert_file(source_file, 'docx', outputfile=output_file)
+                else:
+                    raise Exception(f"不支持从 {self.current_format} 转换为 DOCX")
+                    
+            elif target_format.lower() == 'html':
+                # 转换为HTML格式
+                if self.current_format == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+                    # DOCX to HTML (使用pypandoc)
+                    pypandoc.convert_file(source_file, 'html', outputfile=output_file)
+                elif self.current_format == 'text/plain':
+                    # TXT to HTML
+                    with open(source_file, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                    html_content = f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>转换文档</title>
+</head>
+<body>
+    <pre>{content}</pre>
+</body>
+</html>"""
+                    with open(output_file, 'w', encoding='utf-8') as f:
+                        f.write(html_content)
+                else:
+                    pypandoc.convert_file(source_file, 'html', outputfile=output_file)
+                    
+            elif target_format.lower() == 'md':
+                # 转换为Markdown格式
+                if self.current_format == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+                    pypandoc.convert_file(source_file, 'markdown', outputfile=output_file)
+                elif self.current_format == 'text/plain':
+                    # TXT to MD (简单包装)
+                    with open(source_file, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                    with open(output_file, 'w', encoding='utf-8') as f:
+                        f.write(f"# 转换文档\n\n{content}")
+                else:
+                    pypandoc.convert_file(source_file, 'markdown', outputfile=output_file)
+                    
+            elif target_format.lower() == 'pdf':
+                # 转换为PDF格式 (使用pypandoc)
+                pypandoc.convert_file(source_file, 'pdf', outputfile=output_file)
+                
+            else:
+                raise Exception(f"不支持的文档格式: {target_format}")
+                
+        except Exception as e:
+            if "pypandoc" in str(e).lower():
+                raise Exception("需要安装pandoc来支持此转换。请访问 https://pandoc.org/installing.html")
+            else:
+                raise e
+            
+        self.root.after(0, lambda: self.progress_var.set(75))
+        
+    def convert_spreadsheet(self, source_file, output_file, target_format):
+        """转换电子表格格式"""
+        self.root.after(0, lambda: self.progress_var.set(50))
+        
+        try:
+            # 根据源文件格式读取数据
+            if self.current_format in ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel']:
+                # Excel文件
+                df = pd.read_excel(source_file)
+            elif self.current_format == 'text/csv':
+                # CSV文件
+                df = pd.read_csv(source_file)
+            elif self.current_format == 'text/tab-separated-values':
+                # TSV文件
+                df = pd.read_csv(source_file, sep='\t')
+            else:
+                raise Exception(f"不支持的源格式: {self.current_format}")
+                
+            self.root.after(0, lambda: self.progress_var.set(60))
+            
+            # 根据目标格式保存数据
+            target_format = target_format.lower()
+            if target_format == 'xlsx':
+                df.to_excel(output_file, index=False)
+            elif target_format == 'csv':
+                df.to_csv(output_file, index=False, encoding='utf-8-sig')
+            elif target_format == 'tsv':
+                df.to_csv(output_file, sep='\t', index=False, encoding='utf-8-sig')
+            elif target_format == 'xls':
+                # 注意：openpyxl不直接支持.xls，这里转为xlsx
+                output_file_xlsx = output_file.replace('.xls', '.xlsx')
+                df.to_excel(output_file_xlsx, index=False)
+                # 如果需要真正的.xls格式，需要使用xlwt库
+                try:
+                    import xlwt
+                    workbook = xlwt.Workbook()
+                    worksheet = workbook.add_sheet('Sheet1')
+                    for i, col in enumerate(df.columns):
+                        worksheet.write(0, i, col)
+                    for i, row in df.iterrows():
+                        for j, value in enumerate(row):
+                            worksheet.write(i+1, j, str(value))
+                    workbook.save(output_file)
+                except ImportError:
+                    # 如果没有xlwt，保存为xlsx格式
+                    df.to_excel(output_file.replace('.xls', '.xlsx'), index=False)
+                    output_file = output_file.replace('.xls', '.xlsx')
+            else:
+                raise Exception(f"不支持的目标格式: {target_format}")
+                
+        except Exception as e:
+            raise Exception(f"电子表格转换失败: {str(e)}")
+            
+        self.root.after(0, lambda: self.progress_var.set(75))
+        
+    def convert_presentation(self, source_file, output_file, target_format):
+        """转换演示文稿格式"""
+        self.root.after(0, lambda: self.progress_var.set(50))
+        
+        try:
+            target_format = target_format.lower()
+            
+            if target_format == 'pdf':
+                # 转换为PDF (使用pypandoc或其他方法)
+                if self.current_format == 'application/vnd.openxmlformats-officedocument.presentationml.presentation':
+                    # PPTX转PDF需要专门的处理
+                    # 这里简化处理，提取文本内容
+                    prs = Presentation(source_file)
+                    content = []
+                    for slide in prs.slides:
+                        slide_text = []
+                        for shape in slide.shapes:
+                            if hasattr(shape, "text"):
+                                slide_text.append(shape.text)
+                        content.append('\n'.join(slide_text))
+                    
+                    # 创建一个简单的HTML然后转PDF
+                    html_content = f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>演示文稿</title>
+    <style>
+        body {{ font-family: Arial, sans-serif; margin: 40px; }}
+        .slide {{ page-break-after: always; margin-bottom: 40px; }}
+        h1 {{ color: #333; }}
+    </style>
+</head>
+<body>
+"""
+                    for i, slide_content in enumerate(content):
+                        html_content += f'<div class="slide"><h1>幻灯片 {i+1}</h1><p>{slide_content.replace(chr(10), "<br>")}</p></div>'
+                    html_content += "</body></html>"
+                    
+                    # 保存临时HTML文件然后转PDF
+                    temp_html = output_file.replace('.pdf', '_temp.html')
+                    with open(temp_html, 'w', encoding='utf-8') as f:
+                        f.write(html_content)
+                    
+                    try:
+                        pypandoc.convert_file(temp_html, 'pdf', outputfile=output_file)
+                        os.remove(temp_html)  # 删除临时文件
+                    except:
+                        # 如果pypandoc失败，保留HTML文件
+                        os.rename(temp_html, output_file.replace('.pdf', '.html'))
+                        raise Exception("PDF转换失败，已保存为HTML格式")
+                        
+                else:
+                    raise Exception("仅支持PPTX格式转换为PDF")
+                    
+            elif target_format == 'pptx':
+                # 其他格式转PPTX的基础实现
+                if self.current_format == 'application/vnd.ms-powerpoint':
+                    # PPT转PPTX需要Office或LibreOffice
+                    raise Exception("PPT转PPTX需要安装Microsoft Office或LibreOffice")
+                else:
+                    raise Exception(f"不支持从 {self.current_format} 转换为PPTX")
+                    
+            else:
+                raise Exception(f"不支持的演示文稿格式: {target_format}")
+                
+        except Exception as e:
+            if "pypandoc" in str(e).lower():
+                raise Exception("需要安装pandoc来支持此转换。请访问 https://pandoc.org/installing.html")
+            else:
+                raise e
             
         self.root.after(0, lambda: self.progress_var.set(75))
 

@@ -10,6 +10,12 @@ setup(
         "python-magic",
         "python-magic-bin",
         "Pillow>=9.0.0",
+        "pandas>=1.3.0",
+        "python-docx>=0.8.11",
+        "openpyxl>=3.0.9",
+        "python-pptx>=0.6.21",
+        "pypandoc>=1.5",
+        "xlwt>=1.3.0",
     ],
     entry_points={
         'console_scripts': [

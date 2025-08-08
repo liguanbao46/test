@@ -29,7 +29,10 @@ echo 使用方法：
 echo 1. 双击运行 run.bat 启动程序
 echo 2. 或者在命令行中运行：python file_converter.py
 echo.
-echo 注意：音频和视频转换功能需要额外安装FFmpeg
-echo FFmpeg下载地址：https://ffmpeg.org/download.html
+echo 注意：
+echo 1. 音频和视频转换功能需要额外安装FFmpeg
+echo    下载地址：https://ffmpeg.org/download.html
+echo 2. 高级文档转换功能需要额外安装Pandoc
+echo    下载地址：https://pandoc.org/installing.html
 echo.
 pause
